@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+rai security mode manager
+Configure and manage security posture for rai
+"""
+
+import sys
+from security_config import (
+    SecurityMode, SecurityConfig, load_config, save_config,
+    setup_mild_mode, setup_wild_mode, get_mode_info
+)
+
+
+def show_current_mode():
+    """Display current security mode"""
+    config = load_config()
+    print("\n" + "="*70)
+    print("rai Security Configuration")
+    print("="*70)
+    print(f"\nCurrent Mode: {config.mode.value.upper()}")
+    print(get_mode_info(config.mode))
+
+
+def list_modes():
+    """List all available security modes"""
+    print("\n" + "="*70)
+    print("Available Security Modes")
+    print("="*70)
+
+    for mode in SecurityMode:
+        print(get_mode_info(mode))
+
+
+def set_mode(mode_name: str):
+    """Set security mode"""
+    try:
+        mode = SecurityMode(mode_name.lower())
+    except ValueError:
+        print(f"❌ Invalid mode: {mode_name}")
+        print(f"   Valid modes: {', '.join([m.value for m in SecurityMode])}")
+        sys.exit(1)
+
+    config = SecurityConfig(mode=mode)
+    save_config(config)
+
+    print(get_mode_info(mode))
+
+    # Offer setup assistance
+    if mode == SecurityMode.MILD:
+        print("\n📋 Setup Instructions:")
+        print("-" * 70)
+        setup_mild_mode()
+    elif mode == SecurityMode.WILD:
+        print("\n📋 Setup Instructions:")
+        print("-" * 70)
+        setup_wild_mode()
+    elif mode == SecurityMode.UNRESTRICTED:
+        print("\n✓ No additional setup required")
+        print("  Ensure /etc/sudoers.d/hashcat-nopasswd exists with:")
+        print("    hashcat ALL=(ALL) NOPASSWD:ALL")
+
+
+def main():
+    """Main entry point"""
+    if len(sys.argv) < 2:
+        print("Usage: rai-security <command> [args]")
+        print("\nCommands:")
+        print("  status              Show current security mode")
+        print("  list                List all available modes")
+        print("  set <mode>          Set security mode (mild/wild/unrestricted)")
+        print("  setup-mild          Generate PolicyKit rules")
+        print("  setup-wild          Create SUDO_ASKPASS script")
+        print("\nExamples:")
+        print("  rai-security status")
+        print("  rai-security set wild")
+        print("  rai-security setup-mild")
+        sys.exit(1)
+
+    command = sys.argv[1].lower()
+
+    if command == "status":
+        show_current_mode()
+    elif command == "list":
+        list_modes()
+    elif command == "set":
+        if len(sys.argv) < 3:
+            print("❌ Error: Missing mode argument")
+            print("   Usage: rai-security set <mode>")
+            sys.exit(1)
+        set_mode(sys.argv[2])
+    elif command == "setup-mild":
+        setup_mild_mode()
+    elif command == "setup-wild":
+        setup_wild_mode()
+    else:
+        print(f"❌ Unknown command: {command}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

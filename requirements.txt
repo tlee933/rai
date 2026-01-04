@@ -1,0 +1,9 @@
+# Core dependencies
+mcp>=0.9.0
+rich>=13.7.0
+
+# Optional but recommended
+linux-mcp-server>=0.1.0a4
+
+# Development
+pytest>=7.4.0
