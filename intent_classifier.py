@@ -55,6 +55,34 @@ class IntentClassifier:
         (r'^git[\s-]+commit[\s-]+-m[\s-]+"([^"]+)"$',
          'git', 'commit', lambda m: {'message': m.group(1)}),
 
+        # Atomic Desktop queries (rpm-ostree, Flatpak, toolbox) - Before file ops!
+        (r'^(?:show|get|check)[\s-]*(?:rpm-?ostree|ostree)[\s-]*(?:status)?$',
+         'atomic', 'ostree_status', lambda m: {}),
+
+        (r'^(?:ostree|rpm-?ostree)[\s-]*status$',
+         'atomic', 'ostree_status', lambda m: {}),
+
+        (r'^(?:check|show)[\s-]*(?:system[\s-]*)?updates?$',
+         'atomic', 'check_updates', lambda m: {}),
+
+        (r'^(?:rpm-?ostree|ostree)[\s-]*(?:check|show)[\s-]*updates?$',
+         'atomic', 'check_updates', lambda m: {}),
+
+        (r'^(?:show|list|get)[\s-]*layered[\s-]*packages?$',
+         'atomic', 'layered_packages', lambda m: {}),
+
+        (r'^(?:show|list|get)[\s-]*flatpaks?(?:[\s-]*apps?)?$',
+         'atomic', 'flatpaks', lambda m: {}),
+
+        (r'^(?:check|show)[\s-]*flatpak[\s-]*updates?$',
+         'atomic', 'flatpak_updates', lambda m: {}),
+
+        (r'^(?:show|list|get)[\s-]*toolbox(?:es)?$',
+         'atomic', 'toolboxes', lambda m: {}),
+
+        (r'^(?:show|list|get)[\s-]*(?:distrobox|toolbox)[\s-]*(?:containers?|list)?$',
+         'atomic', 'toolboxes', lambda m: {}),
+
         # File operations
         (r'^(?:read|show|cat)[\s-]+(?:file[\s-]+)?(.+)$',
          'file', 'read', lambda m: {'path': m.group(1).strip()}),

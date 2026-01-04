@@ -88,6 +88,15 @@ class ROCmCLIAgent:
                 }
             ))
 
+        # Add Atomic Desktop server (rpm-ostree, Flatpak, toolbox)
+        atomic_server_path = real_file.parent / "mcp_servers" / "atomic_server.py"
+        if atomic_server_path.exists():
+            await self.mcp_client.add_server(MCPServerConfig(
+                name="atomic",
+                command="python3",
+                args=[str(atomic_server_path)]
+            ))
+
         # Show security mode
         mode_icon = {
             "mild": "🛡️ ",
@@ -122,6 +131,8 @@ class ROCmCLIAgent:
             return await self._handle_git_intent(intent)
         elif intent.category == 'system':
             return await self._handle_system_intent(intent)
+        elif intent.category == 'atomic':
+            return await self._handle_atomic_intent(intent)
         else:
             # Fallback to LLM
             return await self._query_llm(f"Execute: {intent.category} {intent.action}")
@@ -209,6 +220,73 @@ class ROCmCLIAgent:
 
         # Fallback to LLM for unhandled system queries
         query = f"Get {intent.action} information"
+        return await self._query_llm(query)
+
+    async def _handle_atomic_intent(self, intent: Intent) -> str:
+        """Handle atomic desktop queries via atomic MCP server"""
+
+        if intent.action == 'ostree_status':
+            result = await self.mcp_client.call_tool("atomic", "get_rpm_ostree_status", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+            return f"\n🔷 rpm-ostree Status:\n{'='*70}\n{data.get('details', 'N/A')}\n"
+
+        elif intent.action == 'check_updates':
+            result = await self.mcp_client.call_tool("atomic", "check_rpm_ostree_updates", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            if data.get('updates_available'):
+                return f"\n🔄 Updates Available!\n{'='*70}\n{data.get('details', 'Check failed')}\n"
+            else:
+                return f"\n✓ System is up to date!\n"
+
+        elif intent.action == 'layered_packages':
+            result = await self.mcp_client.call_tool("atomic", "list_layered_packages", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+            packages = data.get('packages', [])
+
+            if packages:
+                return f"\n📦 Layered Packages ({len(packages)}):\n{'='*70}\n" + "\n".join(f"  • {pkg}" for pkg in packages) + "\n"
+            else:
+                return "\n📦 No layered packages\n"
+
+        elif intent.action == 'flatpaks':
+            result = await self.mcp_client.call_tool("atomic", "list_flatpaks", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            output = f"\n📱 Flatpak Applications:\n{'='*70}\n"
+            output += f"User apps: {data.get('user_flatpaks', 0)}\n"
+            output += f"System apps: {data.get('system_flatpaks', 0)}\n"
+            output += f"Total: {data.get('total', 0)}\n"
+
+            if data.get('user_apps'):
+                output += "\nUser apps (first 10):\n"
+                output += "\n".join(f"  • {app}" for app in data['user_apps'])
+
+            return output + "\n"
+
+        elif intent.action == 'flatpak_updates':
+            result = await self.mcp_client.call_tool("atomic", "get_flatpak_updates", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            if data.get('updates_available'):
+                return f"\n🔄 Flatpak Updates Available ({data.get('count', 0)}):\n{'='*70}\n" + "\n".join(data.get('updates', [])) + "\n"
+            else:
+                return "\n✓ All Flatpaks up to date!\n"
+
+        elif intent.action == 'toolboxes':
+            result = await self.mcp_client.call_tool("atomic", "list_toolboxes", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+            containers = data.get('containers', [])
+
+            if containers:
+                output = f"\n🔧 Toolbox Containers ({len(containers)}):\n{'='*70}\n"
+                output += "\n".join(f"  • {c['name']}" for c in containers)
+                return output + "\n"
+            else:
+                return "\n🔧 No toolbox containers\n"
+
+        # Fallback to LLM
+        query = f"Get atomic desktop {intent.action} information"
         return await self._query_llm(query)
 
     async def _query_llm(self, query: str) -> str:
