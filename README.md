@@ -59,6 +59,28 @@ pip install linux-mcp-server  # RHEL Lightspeed system diagnostics
 npm install -g @modelcontextprotocol/server-filesystem  # File operations
 ```
 
+### Three Interfaces
+
+**Choose your style:**
+
+```bash
+# 1. One-shot CLI (for scripts and quick queries)
+rai "gpu stats"
+rai "vram"
+
+# 2. Interactive REPL (for multiple queries)
+rai-shell
+rai> gpu stats
+rai> vram
+rai> /exit
+
+# 3. Dashboard TUI (for monitoring with live GPU stats)
+rai-tui
+# Beautiful dashboard with auto-updating GPU stats!
+```
+
+See [INTERFACES.md](INTERFACES.md) for detailed comparison.
+
 ### Basic Usage
 
 ```bash
@@ -72,6 +94,11 @@ rai "check memory"
 rai "check disk"
 rai "list services"
 rai "show logs"
+
+# Atomic desktop (via atomic MCP server)
+rai "ostree status"
+rai "show flatpaks"
+rai "list toolboxes"
 
 # File operations
 rai "read /tmp/test.txt"
