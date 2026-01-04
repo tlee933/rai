@@ -275,6 +275,9 @@ class AtomicServer:
 
                 if method == "initialize":
                     response["result"] = self.handle_initialize(params)
+                elif method == "initialized":
+                    # Notification - no response needed
+                    continue
                 elif method == "tools/list":
                     response["result"] = self.handle_tools_list()
                 elif method == "tools/call":
@@ -284,9 +287,17 @@ class AtomicServer:
                         "content": self.handle_tool_call(tool_name, tool_args)
                     }
                 else:
-                    response["error"] = {"code": -32601, "message": f"Method not found: {method}"}
+                    # Unknown method
+                    if req_id is not None:
+                        # It's a request (has id), send error response
+                        response["error"] = {"code": -32601, "message": f"Method not found: {method}"}
+                    else:
+                        # It's a notification (no id), ignore silently
+                        continue
 
-                print(json.dumps(response), flush=True)
+                # Only print response if it's a request (has id)
+                if req_id is not None:
+                    print(json.dumps(response), flush=True)
 
             except json.JSONDecodeError:
                 continue

@@ -97,6 +97,15 @@ class ROCmCLIAgent:
                 args=[str(atomic_server_path)]
             ))
 
+        # Add Universal Blue server (UBlue, Bazzite, Aurora, image building)
+        ublue_server_path = real_file.parent / "mcp_servers" / "ublue_server.py"
+        if ublue_server_path.exists():
+            await self.mcp_client.add_server(MCPServerConfig(
+                name="ublue",
+                command="python3",
+                args=[str(ublue_server_path)]
+            ))
+
         # Show security mode
         mode_icon = {
             "mild": "🛡️ ",
@@ -133,6 +142,8 @@ class ROCmCLIAgent:
             return await self._handle_system_intent(intent)
         elif intent.category == 'atomic':
             return await self._handle_atomic_intent(intent)
+        elif intent.category == 'ublue':
+            return await self._handle_ublue_intent(intent)
         else:
             # Fallback to LLM
             return await self._query_llm(f"Execute: {intent.category} {intent.action}")
@@ -288,6 +299,142 @@ class ROCmCLIAgent:
         # Fallback to LLM
         query = f"Get atomic desktop {intent.action} information"
         return await self._query_llm(query)
+
+    async def _handle_ublue_intent(self, intent: Intent) -> str:
+        """Handle Universal Blue queries via ublue MCP server"""
+
+        if intent.action == 'image_info':
+            result = await self.mcp_client.call_tool("ublue", "get_image_info", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            output = "\n🔵 Universal Blue Image:\n" + "="*70 + "\n"
+            output += f"Image:    {data.get('image', 'unknown')}\n"
+            output += f"Version:  {data.get('version', 'unknown')}\n"
+            output += f"Deployed: {data.get('deployed', 'unknown')}\n"
+            output += f"Layered:  {data.get('layered_packages', 0)} packages\n"
+
+            if data.get('packages'):
+                output += "\nLayered packages:\n"
+                output += "\n".join(f"  • {pkg}" for pkg in data['packages'][:10])
+                if data.get('layered_packages', 0) > 10:
+                    output += f"\n  ... and {data['layered_packages'] - 10} more"
+
+            return output + "\n"
+
+        elif intent.action == 'image_updates':
+            result = await self.mcp_client.call_tool("ublue", "check_image_updates", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            if data.get('updates_available'):
+                return f"\n🔄 Updates Available!\n{'='*70}\n{data.get('details', 'Unknown')}\n"
+            else:
+                return f"\n✓ Image is up to date: {data.get('current_image', 'unknown')}\n"
+
+        elif intent.action == 'build_type':
+            result = await self.mcp_client.call_tool("ublue", "check_build_type", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            output = "\n🔵 System Variant:\n" + "="*70 + "\n"
+            output += f"Variant:      {data.get('variant', 'unknown')}\n"
+            output += f"Name:         {data.get('name', 'unknown')}\n"
+            output += f"Version:      {data.get('version', 'unknown')}\n"
+            output += f"Pretty Name:  {data.get('pretty_name', 'unknown')}\n"
+
+            return output + "\n"
+
+        elif intent.action == 'list_recipes':
+            result = await self.mcp_client.call_tool("ublue", "list_ujust_recipes", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            recipes = data.get('recipes', [])
+            if not recipes:
+                return "\n📜 No ujust recipes available (ujust not installed)\n"
+
+            output = f"\n📜 ujust Recipes ({len(recipes)}):\n" + "="*70 + "\n"
+            for recipe in recipes:
+                name = recipe.get('name', '')
+                desc = recipe.get('description', '')
+                if desc:
+                    output += f"  • {name:30s} - {desc}\n"
+                else:
+                    output += f"  • {name}\n"
+
+            return output + "\n"
+
+        elif intent.action == 'run_recipe':
+            recipe = intent.params.get('recipe', '')
+            result = await self.mcp_client.call_tool("ublue", "run_ujust_recipe", {'recipe': recipe})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            if 'error' in data:
+                return f"\n❌ Recipe Error:\n{'='*70}\n{data['error']}\n"
+
+            return f"\n✓ Recipe '{recipe}' executed:\n{'='*70}\n{data.get('output', 'No output')}\n"
+
+        elif intent.action == 'gaming_status':
+            result = await self.mcp_client.call_tool("ublue", "get_gaming_status", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            output = "\n🎮 Gaming Status:\n" + "="*70 + "\n"
+            output += f"Steam:     {'✓ Installed' if data.get('steam_installed') else '✗ Not installed'}\n"
+            output += f"GameMode:  {'✓ Installed' if data.get('gamemode_installed') else '✗ Not installed'}\n"
+            output += f"MangoHud:  {'✓ Installed' if data.get('mangohud_installed') else '✗ Not installed'}\n"
+            output += f"Lutris:    {'✓ Installed' if data.get('lutris_installed') else '✗ Not installed'}\n"
+
+            proton = data.get('proton_versions', [])
+            if proton:
+                output += f"\nProton versions ({len(proton)}):\n"
+                output += "\n".join(f"  • {v}" for v in proton[:5])
+                if len(proton) > 5:
+                    output += f"\n  ... and {len(proton) - 5} more"
+
+            return output + "\n"
+
+        elif intent.action == 'build_tools':
+            result = await self.mcp_client.call_tool("ublue", "check_build_tools", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            output = "\n🔨 Build Tools:\n" + "="*70 + "\n"
+            output += f"bootc:    {'✓ Available' if data.get('bootc') else '✗ Not available'}\n"
+            output += f"podman:   {'✓ Available' if data.get('podman') else '✗ Not available'}\n"
+            output += f"buildah:  {'✓ Available' if data.get('buildah') else '✗ Not available'}\n"
+            output += f"mkosi:    {'✓ Available' if data.get('mkosi') else '✗ Not available'}\n"
+            output += f"lorax:    {'✓ Available' if data.get('lorax') else '✗ Not available'}\n"
+            output += f"\nCan build containers: {'Yes' if data.get('can_build_containers') else 'No'}\n"
+            output += f"Can build ISOs:       {'Yes' if data.get('can_build_isos') else 'No'}\n"
+
+            return output + "\n"
+
+        elif intent.action == 'list_images':
+            result = await self.mcp_client.call_tool("ublue", "list_container_images", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            images = data.get('ublue_images', [])
+            if not images:
+                return "\n📦 No UBlue container images found locally\n"
+
+            output = f"\n📦 UBlue Container Images ({len(images)}):\n" + "="*70 + "\n"
+            for img in images:
+                output += f"  • {img.get('name', 'unknown')}\n"
+                output += f"    ID: {img.get('id', 'unknown')}, Size: {img.get('size', 0)} bytes\n"
+
+            return output + "\n"
+
+        elif intent.action == 'containerfile_template':
+            variant = intent.params.get('variant', 'base')
+            result = await self.mcp_client.call_tool("ublue", "get_containerfile_template", {'variant': variant})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            return f"\n📝 Containerfile Template ({variant}):\n{'='*70}\n{data.get('template', 'No template')}\n"
+
+        elif intent.action == 'github_workflow':
+            result = await self.mcp_client.call_tool("ublue", "get_github_workflow_template", {})
+            data = json.loads(result[0]['text']) if isinstance(result, list) else json.loads(result)
+
+            return f"\n⚙️ GitHub Actions Workflow:\n{'='*70}\n{data.get('workflow', 'No workflow')}\n"
+
+        # Fallback to LLM
+        return await self._query_llm(f"Get Universal Blue {intent.action} information")
 
     async def _query_llm(self, query: str) -> str:
         """Query the LLM for complex questions"""

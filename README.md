@@ -100,6 +100,13 @@ rai "ostree status"
 rai "show flatpaks"
 rai "list toolboxes"
 
+# Universal Blue / Image Building (via ublue MCP server)
+rai "show ublue image"
+rai "check build tools"
+rai "list ujust recipes"
+rai "show containerfile template for aurora"
+rai "show gaming status"
+
 # File operations
 rai "read /tmp/test.txt"
 rai "list /home"
@@ -120,6 +127,8 @@ User Query
 │ Intent Classifier (regex patterns)          │
 │  - GPU queries → ROCm MCP Server            │
 │  - System queries → linux-mcp-server        │
+│  - Atomic queries → atomic MCP              │
+│  - UBlue queries → ublue MCP                │
 │  - File ops → filesystem MCP                │
 │  - No match → LLM reasoning                 │
 └──────────────────────────────────────────────┘
@@ -129,6 +138,8 @@ User Query
 │                                              │
 │  ROCm MCP:      GPU stats, VRAM, temp       │
 │  linux-mcp:     systemd, logs, processes    │
+│  atomic:        rpm-ostree, Flatpak         │
+│  ublue:         image building, ujust       │
 │  filesystem:    file/directory operations   │
 └──────────────────────────────────────────────┘
    ↓
@@ -223,6 +234,58 @@ See [SECURITY_MODES.md](SECURITY_MODES.md) for detailed configuration.
 **Standard MCP server for file operations**
 
 **Installation:** `npm install -g @modelcontextprotocol/server-filesystem`
+
+### atomic MCP Server (Custom)
+
+**Tools for rpm-ostree and atomic desktop management:**
+
+**Image Management:**
+- `get_rpm_ostree_status` - Current deployment information
+- `check_rpm_ostree_updates` - Check for image updates
+- `list_layered_packages` - Layered package list
+
+**Applications:**
+- `list_flatpaks` - Installed Flatpak applications
+- `get_flatpak_updates` - Available Flatpak updates
+- `list_toolboxes` - Toolbox/Distrobox containers
+
+**Location:** `mcp_servers/atomic_server.py`
+
+### Universal Blue MCP Server (Custom)
+
+**Comprehensive Universal Blue / immutable image building tools:**
+
+**Image Information (4 tools):**
+- `get_image_info` - Current UBlue image details
+- `check_image_updates` - Check for new builds
+- `check_build_type` - Detect variant (Bazzite/Aurora/Bluefin)
+- `get_build_info` - Build metadata from /usr/share/ublue-os/
+
+**ujust Integration (3 tools):**
+- `list_ujust_recipes` - Available just recipes
+- `run_ujust_recipe` - Execute safe recipes (whitelisted)
+- `get_ujust_info` - ujust installation status
+
+**Gaming Tools (1 tool):**
+- `get_gaming_status` - Steam, Proton, GameMode status (Bazzite)
+
+**Build Tools (3 tools):**
+- `check_build_tools` - bootc, podman, mkosi, lorax availability
+- `list_container_images` - Local UBlue container images
+- `get_containerfile_template` - Generate Containerfile template (base/bazzite/aurora)
+
+**CI/CD (1 tool):**
+- `get_github_workflow_template` - GitHub Actions workflow for image building
+
+**Location:** `mcp_servers/ublue_server.py`
+
+**Use Cases:**
+- Building custom immutable OS images (Bazzite, Aurora variants)
+- ISO generation with bootc
+- GitOps-based image deployment
+- Secure boot with UEFI signing
+- Gaming system optimization (Bazzite)
+- Developer workstation setup (Aurora)
 
 ---
 

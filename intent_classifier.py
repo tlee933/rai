@@ -83,6 +83,37 @@ class IntentClassifier:
         (r'^(?:show|list|get)[\s-]*(?:distrobox|toolbox)[\s-]*(?:containers?|list)?$',
          'atomic', 'toolboxes', lambda m: {}),
 
+        # Universal Blue queries (image building, ujust, gaming)
+        (r'^(?:show|get|check)[\s-]*(?:ublue|universal[\s-]*blue)[\s-]*(?:image|info|status)?$',
+         'ublue', 'image_info', lambda m: {}),
+
+        (r'^(?:check|show)[\s-]*(?:ublue|image)[\s-]*updates?$',
+         'ublue', 'image_updates', lambda m: {}),
+
+        (r'^(?:show|get|check)[\s-]*(?:build|variant|system)[\s-]*type$',
+         'ublue', 'build_type', lambda m: {}),
+
+        (r'^(?:list|show)[\s-]*ujust[\s-]*recipes?$',
+         'ublue', 'list_recipes', lambda m: {}),
+
+        (r'^(?:run|execute)[\s-]*ujust[\s-]+([a-z-]+)$',
+         'ublue', 'run_recipe', lambda m: {'recipe': m.group(1).lower()}),
+
+        (r'^(?:check|show)[\s-]*gaming[\s-]*(?:tools|status)$',
+         'ublue', 'gaming_status', lambda m: {}),
+
+        (r'^(?:check|show)[\s-]*build[\s-]*tools$',
+         'ublue', 'build_tools', lambda m: {}),
+
+        (r'^(?:list|show)[\s-]*(?:ublue|container)[\s-]*images?$',
+         'ublue', 'list_images', lambda m: {}),
+
+        (r'^(?:show|get)[\s-]*containerfile[\s-]*(?:template)?(?:[\s-]+for)?[\s-]*(base|bazzite|aurora)?$',
+         'ublue', 'containerfile_template', lambda m: {'variant': m.group(1) if m.group(1) else 'base'}),
+
+        (r'^(?:show|get)[\s-]*github[\s-]*workflow[\s-]*(?:template)?$',
+         'ublue', 'github_workflow', lambda m: {}),
+
         # File operations
         (r'^(?:read|show|cat)[\s-]+(?:file[\s-]+)?(.+)$',
          'file', 'read', lambda m: {'path': m.group(1).strip()}),
